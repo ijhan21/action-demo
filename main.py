@@ -25,7 +25,7 @@ class TodoResponse(BaseModel):
 @app.get("/")
 def read_root():
     """헬스체크 엔드포인트"""
-    return {"message": "TaskFlow MVP is running!", "version": "0.1.0"}
+    return {"message": "TaskFlow MVP is running!", "version": "0.1.1"}
 
 @app.get("/todos", response_model=List[TodoResponse])
 def get_todos():
