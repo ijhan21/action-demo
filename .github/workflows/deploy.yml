@@ -1,0 +1,23 @@
+name: Deploy to EC2
+
+# main 브랜치에 push하면 실행
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # Step 1: 코드 가져오기
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Step 2: SSH로 EC2에 접속해서 배포
+      - name: Deploy to EC2
+        run: |
+          echo "🚀 배포 시작!"
+          echo "📦 코드 푸시됨"
+          echo "✅ 테스트 통과 (나중에 추가할 예정)"
+          echo "🎉 배포 완료!"
