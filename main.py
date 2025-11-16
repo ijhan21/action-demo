@@ -66,3 +66,18 @@ def complete_todo(todo_id: int):
             todo["completed"] = True
             return todo
     raise HTTPException(status_code=404, detail="TODO not found")
+
+class TodoUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+
+@app.put("/todos/{todo_id}")
+def update_todo(todo_id: int, todo_update: TodoUpdate):
+    for todo in todos_db:
+        if todo["id"] == todo_id:
+            if todo_update.title:
+                todo["title"] = todo_update.title
+            if todo_update.description:
+                todo["description"] = todo_update.description
+            return todo
+    raise HTTPException(status_code=404, detail="TODO not found")

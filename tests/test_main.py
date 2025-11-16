@@ -36,3 +36,15 @@ def test_complete_second_todo():
     
     assert result.status_code == 200
     assert result.json()["completed"] == True
+
+def test_update_todo():
+    # TODO 생성
+    response = client.post("/todos", json={"title": "원래", "description": "설명"})
+    todo_id = response.json()["id"]
+    
+    # 제목만 수정
+    result = client.put(f"/todos/{todo_id}", json={"title": "수정됨"})
+    
+    assert result.status_code == 200
+    assert result.json()["title"] == "수정됨"
+    assert result.json()["description"] == "설명"  # 그대로 유지

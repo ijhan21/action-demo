@@ -1,23 +1,142 @@
+# .github/workflows/deploy.yml
+
+# ========================================
+# Workflow 이름 (GitHub UI에 표시됨)
+# ========================================
 name: Deploy to EC2
 
-# main 브랜치에 push하면 실행
+# ========================================
+# 워크플로우 실행 조건 (트리거)
+# ========================================
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+    # 의미: main 브랜치에 코드가 push되면 자동 실행
+    # 예: git push origin main → 워크플로우 시작
 
+  workflow_dispatch:
+    # 의미: GitHub UI에서 수동으로 실행 가능
+    # 사용: Actions 탭 → 워크플로우 선택 → "Run workflow" 버튼
+
+# ========================================
+# 실행할 작업들
+# ========================================
 jobs:
+  # Job 이름: deploy (원하는 이름으로 변경 가능)
   deploy:
+    # 어디서 실행할까? GitHub이 제공하는 Ubuntu 서버
     runs-on: ubuntu-latest
+    # ubuntu-latest = Ubuntu 24.04 (2025년 기준)
+    # GitHub 서버이므로 무료 (월 2000분)
     
+    # 이 Job이 실행할 단계들
     steps:
-      # Step 1: 코드 가져오기
+      # ========================================
+      # Step 1: 코드 다운로드
+      # ========================================
       - name: Checkout code
-        uses: actions/checkout@v4
-      
-      # Step 2: SSH로 EC2에 접속해서 배포
-      - name: Deploy to EC2
+        uses: actions/checkout@v5
+        # actions/checkout이 하는 일:
+        # 1. 리포지토리 코드를 GitHub 서버로 다운로드
+        # 2. git clone + git checkout main 과 동일
+        # 3. 이후 스텝에서 코드 파일에 접근 가능
+        
+        # 왜 필요한가?
+        # - GitHub 서버는 빈 컴퓨터임
+        # - 코드를 받아야 테스트/빌드 가능
+
+      # ========================================
+      # Step 2: Python 환경 설정
+      # ========================================
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          # 의미: Python 3.12 설치
+          # Chapter 1에서 사용한 버전과 동일하게
+        
+        # setup-python이 하는 일:
+        # 1. Python 3.12 다운로드 및 설치
+        # 2. pip, setuptools 자동 설치
+        # 3. PATH 환경변수 설정
+
+      # ========================================
+      # Step 3: 의존성 설치
+      # ========================================
+      - name: Install dependencies
         run: |
-          echo "🚀 배포 시작!"
-          echo "📦 코드 푸시됨"
-          echo "✅ 테스트 통과 (나중에 추가할 예정)"
-          echo "🎉 배포 완료!"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+        # run의 의미: 터미널 명령어 직접 실행
+        # | (파이프): 여러 줄 명령어 작성 가능
+        
+        # 왜 필요한가?
+        # - pytest를 실행하려면 패키지 설치 필요
+        # - Chapter 2에서 작성한 테스트 실행 준비
+
+      # ========================================
+      # Step 4: 테스트 실행
+      # ========================================
+      - name: Run tests
+        run: pytest
+        # Chapter 2에서 작성한 테스트 코드 실행
+        # 테스트 실패 시: 워크플로우 중단 (배포 안 됨) ✅
+        # 테스트 성공 시: 다음 단계 진행
+        
+        # 실무 가치:
+        # - 버그 있는 코드가 서버에 배포되는 것 방지
+        # - 안전한 배포 보장
+
+      # ========================================
+      # Step 5: EC2에 SSH 접속 및 배포
+      # ========================================
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        # ssh-action: SSH 접속을 쉽게 해주는 액션
+        # v1.0.3: 버전 (안정적인 최신 버전)
+        
+        with:
+          # SSH 접속 정보 (GitHub Secrets에서 가져옴)
+          host: ${{ secrets.EC2_HOST }}
+          # 예: 3.35.123.45
+          
+          username: ${{ secrets.EC2_USER }}
+          # 예: ec2-user (Amazon Linux 기본 사용자)
+          
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # SSH 개인키 전체 내용
+          # -----BEGIN RSA PRIVATE KEY----- 부터
+          # -----END RSA PRIVATE KEY----- 까지
+          
+          port: 22
+          # SSH 기본 포트
+          # EC2 보안 그룹에서 22번 포트 열려있어야 함
+          
+          # EC2에서 실행할 명령어들
+          script: |
+            # 프로젝트 디렉토리로 이동
+            cd ~/taskflow
+            # ~/taskflow = /home/ec2-user/taskflow
+            
+            # 최신 코드 가져오기
+            git pull origin main
+            # GitHub에서 최신 코드 다운로드
+            # 로컬에서 push한 코드를 EC2로 가져옴
+            
+            # Docker Compose로 빌드 및 실행
+            docker compose down
+            # 기존 컨테이너 중지 및 삭제
+            # down = stop + remove
+            
+            docker compose build
+            # Dockerfile로 이미지 새로 빌드
+            # Chapter 1에서 작성한 Dockerfile 사용
+            
+            docker compose up -d
+            # -d: detached mode (백그라운드 실행)
+            # 컨테이너 시작
+            
+            # 실행 중인 컨테이너 확인
+            docker compose ps
+            # 배포 성공 확인용
