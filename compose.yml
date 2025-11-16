@@ -1,0 +1,40 @@
+# compose.yml
+
+# Compose 파일 버전 (최신 버전 사용)
+version: '3.8'
+
+# 서비스 정의 (컨테이너들)
+services:
+  # 서비스 이름: api (원하는 이름으로 변경 가능)
+  api:
+    # 빌드 설정
+    build:
+      context: .
+      # context: Dockerfile이 있는 경로
+      # . = 현재 디렉토리 (compose.yml과 같은 위치)
+      
+      dockerfile: Dockerfile
+      # 사용할 Dockerfile 이름
+      # 기본값: Dockerfile
+    
+    # 컨테이너 이름 (docker ps에서 보이는 이름)
+    container_name: taskflow-api
+    
+    # 포트 매핑
+    ports:
+      - "8000:8000"
+    # 형식: "호스트포트:컨테이너포트"
+    # 8000:8000 = EC2의 8000번 포트를 컨테이너의 8000번 포트로 연결
+    
+    # 환경변수 설정
+    environment:
+      - ENV=production
+      # FastAPI 실행 환경 설정
+      
+      - PYTHONUNBUFFERED=1
+      # Python 로그를 즉시 출력 (디버깅에 유용)
+    
+    # 재시작 정책
+    restart: unless-stopped
+    # unless-stopped: 수동으로 중지하지 않는 한 항상 재시작
+    # 서버 재부팅 시에도 자동으로 컨테이너 시작
